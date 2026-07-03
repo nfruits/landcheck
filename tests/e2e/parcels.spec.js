@@ -120,8 +120,11 @@ test('parcels: clicking a parcel populates the detail panel', async ({ page }) =
   await expect(page.locator('#p-value')).toContainText('$487,500');
 });
 
-test('parcels: acreage shows "not reported" when the county lacks the data', async ({ page }) => {
-  // Stub a feature with NO acres-related field at all.
+test('parcels: acreage falls back to a geometry-derived estimate when the county lacks the field', async ({ page }) => {
+  // Stub a feature with NO acres-related field: refresh() must inject
+  // __geomAcres from the polygon (spherical excess) and the panel shows the
+  // estimate instead of the old "not reported" affordance. The 0.001° ×
+  // 0.001° square at lat 38.98 is ~9.6k sqm ≈ 2.4 ac.
   await page.route('**/MD_ParcelBoundaries/MapServer/0/query**', route =>
     route.fulfill({
       status: 200, contentType: 'application/json',
@@ -148,8 +151,39 @@ test('parcels: acreage shows "not reported" when the county lacks the data', asy
     });
     t.fire('click', { latlng: t.getBounds().getCenter() });
   });
-  await expect(page.locator('#p-acres')).toHaveText('not reported');
+  await expect(page.locator('#p-acres')).toHaveText(/^2\.\d{3} ac$/);
   await expect(page.locator('#p-acres')).toBeVisible();
+});
+
+test('parcels: acreage still shows "not reported" when geometry is degenerate', async ({ page }) => {
+  // No acres field AND a zero-area (2-vertex) polygon → the geometry fallback
+  // must decline (no misleading "0.000 ac") and the affordance survives.
+  await page.route('**/MD_ParcelBoundaries/MapServer/0/query**', route =>
+    route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: { ACCTID: 'ZERO-GEOM', OWNNAME: 'X', NFMTTLVL: 100 },
+          geometry: { type: 'Polygon', coordinates: [[
+            [-77.10, 38.98], [-77.099, 38.981], [-77.10, 38.98]
+          ]]}
+        }]
+      })
+    })
+  );
+  await bootAt(page, 38.9805, -77.0995, 17);
+  await page.click('.layer[data-layer="parcels"]');
+  await page.waitForFunction(() => window.__parcel.parcels.countLoaded() === 1);
+  await page.evaluate(() => {
+    let t = null;
+    window.__parcel.map.eachLayer(l => {
+      if (l.feature?.properties?.ACCTID === 'ZERO-GEOM') t = l;
+    });
+    t.fire('click', { latlng: t.getBounds().getCenter() });
+  });
+  await expect(page.locator('#p-acres')).toHaveText('not reported');
 });
 
 test('parcels: response at/above transfer limit triggers quadtree subdivision', async ({ page }) => {

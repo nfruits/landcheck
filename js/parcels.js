@@ -250,9 +250,47 @@ function pickField(props, candidates) {
   return null;
 }
 
+// Geometry-derived acreage (spherical excess — same math as draw.js
+// polygonAreaSqMeters, but over GeoJSON [lng,lat] rings). Several sources
+// expose no usable area field (TX/IN/UT/AK/CT statewide, some VA/PA
+// localities), yet the polygon geometry is always in hand: refresh() injects
+// the computed value as props.__geomAcres and lookupField('acres') uses it
+// as the last-resort fallback after fieldMap and derive.
+const SQM_PER_ACRE = 4046.8564224;
+
+function ringAreaSqM(ring) {
+  if (!Array.isArray(ring) || ring.length < 3) return 0;
+  const R = 6378137;
+  const toRad = d => d * Math.PI / 180;
+  let area = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const [lng1, lat1] = ring[i];
+    const [lng2, lat2] = ring[(i + 1) % ring.length];
+    area += toRad(lng2 - lng1) * (2 + Math.sin(toRad(lat1)) + Math.sin(toRad(lat2)));
+  }
+  return Math.abs(area * R * R / 2);
+}
+
+function geomAcres(geometry) {
+  if (!geometry) return null;
+  const polys = geometry.type === 'Polygon' ? [geometry.coordinates]
+    : geometry.type === 'MultiPolygon' ? geometry.coordinates : [];
+  let sqm = 0;
+  for (const rings of polys) {
+    if (!Array.isArray(rings) || !rings.length) continue;
+    sqm += ringAreaSqM(rings[0]);
+    for (let i = 1; i < rings.length; i++) sqm -= ringAreaSqM(rings[i]); // holes
+  }
+  const acres = sqm / SQM_PER_ACRE;
+  // Degenerate/zero geometry (< ~4 sqm) produces no estimate rather than a
+  // misleading "0.000 ac".
+  return acres > 0.001 ? acres : null;
+}
+
 // Look up a logical field for a parcel from its source county. Field-map
-// lookup runs first; if nothing matches and the county defined a `derive`
-// hook for this kind, run it. Returns null when neither path produces a value.
+// lookup runs first; then the county's `derive` hook; for acreage only, the
+// geometry-derived estimate injected by refresh() is the final fallback.
+// Returns null when no path produces a value.
 function lookupField(countyKey, kind, props) {
   const county = PARCEL_COUNTIES[countyKey];
   if (!county) return null;
@@ -262,7 +300,10 @@ function lookupField(countyKey, kind, props) {
   const derive = county.derive?.[kind];
   if (typeof derive === 'function') {
     const v = derive(props);
-    return v === undefined ? null : v;
+    if (v !== undefined && v !== null) return v;
+  }
+  if (kind === 'acres' && Number.isFinite(props?.__geomAcres) && props.__geomAcres > 0) {
+    return props.__geomAcres;
   }
   return null;
 }
@@ -486,6 +527,11 @@ async function refresh() {
   for (const [key, data] of results) {
     if (!data || !data.features) continue;
     for (const f of data.features) {
+      // Inject the geometry-derived acreage before the layer is built so it
+      // rides along with every props copy (fly-out, compare pins, saved
+      // places) without those call sites needing the geometry.
+      const props = f.properties || (f.properties = {});
+      if (props.__geomAcres === undefined) props.__geomAcres = geomAcres(f.geometry);
       const layer = L.geoJSON(f, { style: STYLE_DEFAULT }).getLayers()[0];
       if (!layer) continue;
       if (selectedId != null && currentSelection.countyKey === key &&
