@@ -1,0 +1,17 @@
+{
+  "name": "parcel-land-analysis",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "health": "node scripts/health.mjs",
+    "serve": "python -m http.server 8765 --bind 0.0.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

@@ -1,0 +1,1481 @@
+:root {
+  /* ============================================================
+     "INSTRUMENT" — dark pro-GIS palette (2026-06-13 redesign).
+     The light cream/copper/forest identity is preserved as a
+     restore point at git tag `design-v1-cream-copper`. This dark
+     system keeps the brand DNA — copper primary + forest active —
+     brightened for legibility on dark, so the map imagery is the
+     hero and the UI reads like an instrument panel.
+     ============================================================ */
+
+  /* SURFACES — layered slate, darkest = page/map, lighter = raised */
+  --paper:        #0c0f14;   /* page background / map field (deepest) */
+  --paper-2:      #11151c;   /* sidebar */
+  --paper-3:      #171d26;   /* raised panel + control surfaces */
+  --surface-hi:   #1e2530;   /* hover / elevated control surface */
+
+  /* INK — text on dark, cool neutral */
+  --ink:          #eef1f5;   /* primary text, near-white */
+  --ink-2:        #9aa4b2;   /* secondary text */
+  --ink-3:        #7b8595;   /* tertiary / muted — 4.5:1+ on paper-2/3 (AA; audited 2026-07-01) */
+  --rule:         #262d39;   /* hairline borders (light-on-dark) */
+  --rule-soft:    rgba(255, 255, 255, 0.06);
+
+  /* ACCENT — two-tone: copper = brand & controls, teal = live data &
+     interactive highlights. Forest green retires from UI chrome and survives
+     only as the semantic protected-lands map color. */
+  --amber:        #e0a23c;   /* primary: wordmark, CTAs, tools, focus rings */
+  --amber-soft:   rgba(224, 162, 60, 0.14);
+  --teal:         #2dd4bf;   /* secondary: data values, active/interactive state */
+  --teal-soft:    rgba(45, 212, 191, 0.14);
+  --teal-deep:    #14b8a6;
+  --terrain:      #6fb152;   /* map-overlay semantic only (protected lands) */
+  --terrain-deep: #5c9a42;
+  --terrain-soft: rgba(111, 177, 82, 0.15);
+
+  /* SUPPORTING — hazards and water keep semantic meaning */
+  --hazard:       #e2674a;
+  --hazard-soft:  rgba(226, 103, 74, 0.13);
+  --water:        #4fa0c8;
+  --contour:      #c8954a;
+
+  /* ELEVATION — deeper shadows for dark; accent glows for focus */
+  --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md:    0 3px 12px rgba(0, 0, 0, 0.55);
+  --shadow-lg:    0 14px 36px rgba(0, 0, 0, 0.65);
+  --glow-amber:   0 0 0 1px rgba(224, 162, 60, 0.35), 0 0 12px rgba(224, 162, 60, 0.18);
+
+  /* TYPE — serif for display, sans for body, mono for numerics */
+  --serif: 'Fraunces', 'Georgia', serif;
+  --sans:  'IBM Plex Sans', system-ui, sans-serif;
+  --mono:  'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Safety default: never let a UA-blue link appear on the dark theme. */
+a { color: var(--amber); }
+
+html, body {
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: 56px 1fr;
+  height: 100vh;
+  height: 100dvh; /* dynamic viewport: mobile browser chrome no longer hides the bottom strip */
+  gap: 0;
+}
+
+/* HEADER */
+header {
+  grid-column: 1 / -1;
+  background: var(--paper-3);
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+.brand-mark {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  font-feature-settings: 'ss01' 1;  /* Fraunces stylistic set if available */
+}
+.brand-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--ink-2);
+}
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-2);
+}
+.header-meta span { display: flex; align-items: center; gap: 6px; }
+.dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 8px var(--teal);
+}
+
+/* SIDEBAR */
+aside {
+  background: var(--paper-2);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+aside::-webkit-scrollbar { width: 6px; }
+aside::-webkit-scrollbar-track { background: var(--paper-2); }
+aside::-webkit-scrollbar-thumb { background: var(--ink-3); border-radius: 3px; }
+
+.panel {
+  padding: 24px 26px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.panel-title {
+  font-family: var(--serif);
+  /* 15px, not 13 — Fraunces only shows its serif character above ~14px */
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  color: var(--ink);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panel-title > span:first-child { color: var(--ink); }
+.panel-title .num {
+  font-family: var(--mono);
+  color: var(--ink-3);
+  opacity: 0.8;
+}
+
+/* LOCATE / COLLAPSED SEARCH */
+.locate-panel { padding: 18px 26px; } /* horizontal gutter matches .panel */
+.locate-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  padding: 10px 14px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  border-radius: 6px;
+  box-shadow: var(--shadow-sm);
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.05s;
+}
+.locate-toggle:hover { color: var(--amber); border-color: var(--amber); box-shadow: var(--shadow-md); }
+.locate-toggle:active { transform: translateY(1px); }
+.locate-icon { font-size: 16px; line-height: 1; }
+.locate-hint { letter-spacing: 0.02em; }
+.locate-panel.expanded .locate-toggle { display: none; }
+.locate-panel:not(.expanded) .search-wrap { display: none; }
+
+/* NOW VIEWING (mini-readout) */
+.now-viewing { padding-bottom: 22px; }
+/* One row: lat/lon/zoom/scale fit side-by-side down to 320px, halving the
+   panel's height (2026-07-01 density pass). */
+.nv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: space-between;
+  gap: 4px 14px;
+  margin-bottom: 10px;
+}
+.nv-cell { display: flex; flex-direction: column; gap: 3px; }
+.nv-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-2);
+}
+.nv-cell strong {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--teal);   /* live instrument data */
+}
+.nv-scale strong { color: var(--ink-2); font-size: 11px; font-weight: 400; }
+.pin-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  color: var(--ink-2);
+  padding: 8px 12px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+/* An always-disabled button at boot is dead weight — appear when pinning
+   becomes possible (first pin). compare.spec.js only clicks it after pinning. */
+.pin-pill:disabled { display: none; }
+.pin-pill:not(:disabled):hover { color: var(--amber); border-color: var(--amber); box-shadow: var(--shadow-md); }
+.pin-pill-star { font-size: 13px; color: var(--amber); }
+
+/* SEARCH */
+.search-wrap {
+  position: relative;
+}
+.search {
+  width: 100%;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  padding: 11px 32px 11px 14px;
+  font-family: var(--sans);
+  font-size: 13px;
+  outline: none;
+  border-radius: 6px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search-help {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  font-size: 11px;
+  font-family: var(--sans);
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  user-select: none;
+  background: var(--paper-3);
+}
+.search-help:hover { color: var(--amber); border-color: var(--amber); }
+.search:focus { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+.search::placeholder { color: var(--ink-3); }
+.search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  box-shadow: var(--shadow-md);
+}
+.search-results.active { display: block; }
+.search-result {
+  padding: 11px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  border-bottom: 1px solid var(--rule-soft);
+  transition: background 0.1s;
+}
+.search-result:hover { background: var(--amber-soft); color: var(--amber); }
+.search-result-recent { color: var(--ink-2); font-style: italic; }
+.search-result-recent:hover { color: var(--amber); }
+.result-source {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--teal-deep);
+  background: var(--teal-soft);
+  padding: 1px 5px;
+  border-radius: 2px;
+  margin-right: 6px;
+  font-style: normal;
+}
+
+/* LAYER TOGGLES */
+.layer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  cursor: pointer;
+  border-bottom: 1px dotted var(--rule-soft);
+  transition: color 0.15s;
+}
+.layer .layer-label { flex: 1 1 auto; min-width: 0; }
+.layer .info-icon { margin-left: 0; }
+.layer:last-child { border-bottom: none; }
+.layer:hover { color: var(--amber); }
+.layer:hover .layer-label { color: var(--amber); }
+.layer-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  transition: color 0.15s;
+}
+.layer-swatch {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--ink-3);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.layer-swatch.flood { background: rgba(176, 69, 37, 0.35); border-color: var(--hazard); }
+.layer-swatch.wet { background: rgba(61, 106, 133, 0.35); border-color: var(--water); }
+.layer-swatch.topo { background: rgba(140, 93, 42, 0.3); border-color: var(--contour); }
+.layer-swatch.soil { background: rgba(184, 134, 44, 0.3); border-color: var(--amber); }
+
+/* Modern pill-style toggle switch. Now a real <button role="switch"> so it's
+   keyboard-operable — Enter/Space's synthesized click bubbles to the .layer
+   row handler; the global :focus-visible ring lights it up for free. */
+.toggle {
+  width: 34px;
+  height: 20px;
+  background: var(--ink-3);
+  border: none;
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--paper-3);
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.layer.active .toggle { background: var(--teal); box-shadow: 0 0 10px var(--teal-soft); }
+.layer.active .toggle::after {
+  transform: translateX(14px);
+  background: var(--paper-3);
+}
+
+/* INFO ICON — small italic 'i' in a circle, on-theme tooltip on hover/click.
+   24px hit-box (WCAG 2.5.8 minimum); negative margins keep row height. */
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--ink-3);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: help;
+  position: relative;
+  margin: -3px 0 -3px 6px;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s, border-color 0.15s;
+}
+.info-icon::before { content: 'i'; }
+.info-icon:hover,
+.info-icon.tip-open { color: var(--amber); border-color: var(--amber); }
+.info-icon::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 240px;
+  width: max-content;
+  padding: 10px 12px;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+  color: var(--ink);
+  text-align: left;
+  white-space: normal;
+  line-height: 1.5;
+  z-index: 1500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.info-icon:hover::after,
+.info-icon:focus-visible::after,
+.info-icon.tip-open::after { opacity: 1; }
+
+/* BOUNDARY ZOOM EDIT MODE */
+.boundary-gear {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  transition: color 0.15s, border-color 0.15s, transform 0.2s;
+}
+.boundary-gear:hover { color: var(--amber); border-color: var(--amber); }
+#admin-panel.edit-mode .boundary-gear { color: var(--amber); border-color: var(--amber); transform: rotate(45deg); }
+.boundary-zoom-input {
+  display: none;
+  width: 50px;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  padding: 4px 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+  margin-right: 10px;
+  outline: none;
+  border-radius: 4px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.boundary-zoom-input:focus { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+#admin-panel.edit-mode .boundary-zoom-input { display: inline-block; }
+#admin-panel.edit-mode .admin-toggle .toggle { pointer-events: none; opacity: 0.4; }
+
+/* BASEMAP SELECT */
+.basemap-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.basemap-btn {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  padding: 10px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  border-radius: 5px;
+  box-shadow: var(--shadow-sm);
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.05s;
+}
+.basemap-btn:hover { color: var(--ink); border-color: var(--ink-3); box-shadow: var(--shadow-md); }
+.basemap-btn:active { transform: translateY(1px); }
+.basemap-btn.active {
+  background: var(--teal-soft);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+/* READOUT */
+.readout-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  font-size: 12px;
+}
+.readout-label {
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  font-weight: 500;
+}
+.readout-value {
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--ink);
+}
+/* Live data reads teal (instrument semantic) — placed BEFORE .amber/.hazard
+   so warning states still win the cascade. */
+.kv-row .readout-value:not(.empty),
+.readout-row .readout-value:not(.empty) { color: var(--teal); }
+.readout-value.empty { color: var(--ink-3); }
+.readout-value.amber { color: var(--amber); }
+.readout-value.hazard { color: var(--hazard); }
+/* Zoning cross-link and any other in-row links: teal = interactive data. */
+.kv-row a { color: var(--teal); text-decoration: underline; text-underline-offset: 2px; }
+.kv-row a:hover { color: var(--amber); }
+
+/* DETAIL FLY-OUT */
+.flyout {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 340px;
+  height: 100%;
+  background: var(--paper-3);
+  border-left: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 999;
+  pointer-events: none;
+}
+.flyout.open {
+  transform: translateX(0);
+  pointer-events: auto;
+  box-shadow: var(--shadow-lg);
+}
+.flyout-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 26px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+.flyout-title {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.35;
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  /* Long geocoded addresses clamp to 2 lines; flyout.js mirrors the full
+     string into the title attribute so it's recoverable on hover. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.flyout-close {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  font-size: 18px;
+  width: 30px;
+  height: 30px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.flyout-close:hover { color: var(--hazard); border-color: var(--hazard); transform: rotate(90deg); }
+.flyout-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 10px 26px 26px;
+}
+.flyout-section { padding: 20px 0; border-bottom: 1px solid var(--rule-soft); }
+.flyout-section:last-of-type { border-bottom: none; }
+.flyout-section h3 {
+  font-family: var(--serif);
+  font-size: 15px;   /* matches .panel-title — one display size, not an orphan 14px */
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.kv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;    /* matches .readout-row rhythm */
+  font-size: 12px;
+  gap: 14px;
+}
+/* Equal-specificity `.kv-row` overrides UA `[hidden] { display: none }`,
+   so we need a higher-specificity override here for the hidden state to
+   stick (root cause of Bug 2 / 2026-05-17: the zoning row was visible by
+   default with the placeholder `href="#"`, which combined with target=_blank
+   opened the current app URL in a new tab). */
+.kv-row[hidden] { display: none; }
+.kv-row > span:first-child {
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 10px;
+  font-weight: 500;
+  flex: 0 0 auto;
+}
+.kv-row > span:last-child {
+  font-family: var(--mono);
+  text-align: right;
+  word-break: break-word;
+  color: var(--ink);
+}
+.flyout-section-toggle {
+  display: flex;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.flyout-section-toggle h3 { margin-bottom: 0; }
+.flyout-section-chevron {
+  font-size: 11px;
+  color: var(--ink-2);
+  transition: transform 0.15s ease;
+  line-height: 1;
+}
+.flyout-section-toggle[aria-expanded="true"] .flyout-section-chevron { transform: rotate(90deg); }
+.flyout-section-body { padding-top: 12px; }
+.flyout-section-body[hidden] { display: none; }
+.flyout-note { padding-top: 4px; padding-bottom: 8px; }
+.flyout-note .muted { font-size: 11px; color: var(--ink-2); font-style: italic; font-family: var(--sans); }
+/* Specificity fix: `.kv-row > span:last-child` (0,2,1) beats
+   `.flyout-note .muted` (0,2,0), so flood-zone / demographics prose notes
+   rendered mono, right-aligned. Notes are sentences — sans, left, readable. */
+.kv-row.flyout-note > span:last-child {
+  font-family: var(--sans);
+  text-align: left;
+  font-size: 11px;
+}
+.flyout-actions {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.flyout-titlebar { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.flyout-subtitle {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+.flyout-subtitle:empty { display: none; }
+/* Approximate reverse-geocode results style the title in muted italic so users
+   can tell at a glance that the address is a locality, not a building. */
+.flyout-title.flyout-title-approximate {
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+/* Save Place inline form */
+.save-place-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+.save-place-form[hidden] { display: none; }
+.sp-field-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.sp-input, .sp-textarea {
+  width: 100%;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sp-input::placeholder, .sp-textarea::placeholder { color: var(--ink-3); font-style: italic; }
+.sp-input:focus, .sp-textarea:focus { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+.sp-textarea { resize: vertical; min-height: 60px; font-family: var(--sans); }
+.sp-form-actions { display: flex; gap: 8px; }
+.sp-form-actions .tool-btn { margin-bottom: 0; }
+
+/* DETAIL ROW (stacked label/value for long values — legacy, may be unused) */
+.detail-row {
+  padding: 8px 0;
+  border-bottom: 1px dotted var(--rule-soft);
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row .readout-label { display: block; margin-bottom: 4px; }
+.detail-row .readout-value { display: block; font-size: 11px; line-height: 1.4; word-break: break-word; }
+
+/* TOOLS — modern button style with subtle elevation */
+.tool-btn {
+  width: 100%;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  padding: 11px 14px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  border-radius: 5px;
+  box-shadow: var(--shadow-sm);
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.05s;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.tool-btn:hover { color: var(--amber); border-color: var(--amber); box-shadow: var(--shadow-md); }
+.tool-btn:active { transform: translateY(1px); }
+.tool-btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; color: var(--ink-3); border-color: var(--rule); }
+.tool-btn.danger:hover { color: var(--hazard); border-color: var(--hazard); }
+.tool-btn-glyph {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 600;
+}
+
+/* MAP */
+.map-wrap {
+  position: relative;
+  background: var(--paper);
+  overflow: hidden;
+}
+#map {
+  width: 100%;
+  height: 100%;
+  background: #090c10;
+}
+
+/* COMPASS — small "N" indicator, no decorative ring */
+.compass {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ATTRIBUTION OVERRIDE */
+.leaflet-control-attribution {
+  background: rgba(12, 15, 20, 0.82) !important;
+  color: var(--ink-2) !important;
+  font-family: var(--sans) !important;
+  font-size: 10px !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: 4px !important;
+  backdrop-filter: blur(6px);
+}
+.leaflet-control-attribution a { color: var(--amber) !important; }
+
+.leaflet-bar {
+  border: 1px solid var(--rule) !important;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+.leaflet-control-zoom a {
+  background: var(--paper-3) !important;
+  color: var(--ink) !important;
+  border-color: var(--rule) !important;
+  font-family: var(--serif) !important;
+  width: 30px !important;
+  height: 30px !important;
+  line-height: 30px !important;
+  font-size: 15px;
+  font-weight: 600;
+}
+.leaflet-control-zoom a:hover {
+  background: var(--paper-2) !important;
+  color: var(--amber) !important;
+}
+.leaflet-control-zoom a.leaflet-disabled {
+  color: var(--ink-3) !important;
+  background: var(--paper-3) !important;
+}
+
+/* Scale bar — themed like the attribution chip. */
+.leaflet-control-scale-line {
+  background: rgba(12, 15, 20, 0.82) !important;
+  border: 1px solid var(--rule) !important;
+  border-top: none !important;
+  color: var(--ink-2) !important;
+  font-family: var(--mono) !important;
+  font-size: 10px !important;
+  text-shadow: none !important;
+  padding: 2px 6px !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--paper-3) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: 6px !important;
+  font-family: var(--sans) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.leaflet-popup-tip { background: var(--paper-3) !important; }
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--ink-2) !important;
+  font-family: var(--sans) !important;
+  top: 6px;
+  right: 6px;
+}
+.leaflet-container a.leaflet-popup-close-button:hover { color: var(--hazard) !important; }
+
+/* Click-pin coordinate popup: mono teal readout, no chrome. */
+.coord-popup .leaflet-popup-content {
+  margin: 6px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+.coord-popup .leaflet-popup-content strong { color: var(--teal); font-weight: 500; }
+
+/* Parcel polygons: hover/select restyles glide instead of snapping. The map
+   uses Leaflet's SVG renderer, so setStyle() writes attributes these
+   transitions animate; the global prefers-reduced-motion clamp covers it. */
+path.leaflet-interactive {
+  transition: stroke 0.15s ease, stroke-width 0.15s ease,
+              fill-opacity 0.2s ease, stroke-opacity 0.15s ease;
+}
+
+/* TOAST — styling lives here (not JS cssText) so it stays on-theme.
+   pointer-events:none is load-bearing: the old inline-styled element kept
+   intercepting map clicks at top-center after fading out. */
+#toast {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translate(-50%, -8px);
+  background: rgba(23, 29, 38, 0.96);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--amber);
+  border-radius: 6px;
+  color: var(--ink);
+  padding: 10px 16px;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  z-index: 9999;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  max-width: min(480px, calc(100vw - 32px));
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* PARCEL LOADING PILL — teal live-data status while county fetches run. */
+.map-status {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translate(-50%, 0);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(23, 29, 38, 0.96);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--teal);
+  z-index: 600;
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.map-status[hidden] {
+  display: flex;             /* keep in layout so the fade-out plays */
+  opacity: 0;
+  transform: translate(-50%, -8px);
+}
+.map-status .loading {
+  width: 10px;
+  height: 10px;
+  border-color: var(--teal);
+  border-top-color: transparent;
+}
+
+/* LOADING SPINNER */
+.loading {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--amber);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* FOOTER NOTE */
+.footer-note {
+  padding: 20px 26px;
+  font-size: 11px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  border-top: 1px solid var(--rule-soft);
+}
+.footer-note a {
+  color: var(--amber);
+  text-decoration: none;
+  font-weight: 500;
+}
+.footer-note a:hover { text-decoration: underline; }
+.footer-sep { color: var(--ink-3); margin: 0 6px; }
+
+/* PINNED CHIPS — used in the mini-readout area */
+.pin-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 0 0;
+  min-height: 4px;
+}
+.pin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--amber-soft);
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 4px 3px 8px;
+  letter-spacing: 0.04em;
+  border-radius: 3px;
+}
+.pin-chip-x {
+  background: none; border: none; color: var(--amber);
+  cursor: pointer; padding: 0 2px; font-size: 14px; line-height: 1;
+}
+
+/* MY PLACES */
+.my-places-empty {
+  font-size: 11px;
+  color: var(--ink-2);
+  font-style: italic;
+  line-height: 1.5;
+  padding: 8px 0 14px;
+}
+.my-places-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.my-places-list:empty + .tool-btn { display: none; }
+.mp-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.mp-row:hover { border-color: var(--amber); box-shadow: var(--shadow-sm); }
+.mp-row.editing,
+.mp-row.confirming-delete { cursor: default; }
+.mp-check { cursor: pointer; accent-color: var(--amber); }
+.mp-text { min-width: 0; }
+.mp-label {
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mp-label.fallback { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--ink-2); }
+.mp-notes {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mp-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-2);
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+.mp-icon-btn:hover { color: var(--amber); background: var(--amber-soft); }
+.mp-icon-btn.delete:hover { color: var(--hazard); background: var(--hazard-soft); }
+.mp-confirm {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink);
+}
+.mp-confirm-text { flex: 1; }
+.mp-confirm button {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: var(--sans);
+  font-size: 11px;
+  cursor: pointer;
+}
+.mp-confirm button.danger { color: var(--hazard); border-color: var(--hazard); }
+.mp-edit {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mp-edit-actions { display: flex; gap: 6px; margin-top: 4px; }
+
+
+/* ABOUT MODAL — shares the compare-modal shell; prose body */
+.about-modal-card { max-width: 440px; }
+.about-body {
+  padding: 4px 2px 2px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+.about-body p { margin: 0 0 14px; }
+.about-body p:last-child { margin-bottom: 0; }
+.about-body strong { color: var(--teal); font-weight: 600; }
+.about-disclaimer {
+  border-left: 3px solid var(--amber);
+  padding-left: 12px;
+  font-size: 12px;
+}
+.about-support a { font-weight: 500; }
+
+/* SOIL LEGEND (map corner) */
+.soil-legend {
+  position: absolute;
+  bottom: 48px;   /* clears the new bottom-left scale bar */
+  left: 14px;
+  background: rgba(23, 29, 38, 0.96);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--ink);
+  max-width: 260px;
+  box-shadow: var(--shadow-md);
+  z-index: 500;
+  line-height: 1.4;
+}
+.soil-legend[hidden] { display: none; }
+.soil-legend-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+.soil-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+.soil-legend-row .sw {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+.soil-legend-note {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule-soft);
+  font-size: 10px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+/* COVERAGE BUTTON + MODAL */
+.coverage-row { padding-top: 6px; }
+.coverage-btn {
+  background: none;
+  border: none;
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 0;
+  border-bottom: 1px dotted var(--rule);
+  transition: color 0.15s, border-color 0.15s;
+}
+.coverage-btn:hover { color: var(--amber); border-color: var(--amber); }
+/* .coverage-modal-card sizing is set further down via the more-specific
+   `.compare-modal-card.coverage-modal-card` selector so it can override
+   the shared shell's overflow: hidden without !important. */
+.coverage-list { list-style: none; padding: 0; margin: 0; }
+.coverage-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--rule-soft);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.coverage-item:hover { background: var(--amber-soft); color: var(--amber); }
+.coverage-item-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.coverage-item-name {
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.coverage-item:hover .coverage-item-name { color: var(--amber); }
+.coverage-item-state {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+}
+.coverage-item-status {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+  align-self: flex-start;
+}
+.coverage-item-status.verified {
+  color: var(--teal);
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+.coverage-item-status.untested {
+  color: var(--ink-2);
+  border-color: var(--ink-3);
+  background: transparent;
+}
+.coverage-item-status.coming-soon {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: var(--amber-soft);
+}
+.coverage-item-reason {
+  flex: 1 1 100%;
+  margin-top: 4px;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--ink-2);
+  font-style: italic;
+  line-height: 1.4;
+}
+.coverage-section { padding: 6px 0 10px; }
+.coverage-section + .coverage-section { border-top: 1px solid var(--rule); }
+.coverage-section-title {
+  font-family: var(--serif);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 12px 22px 4px;
+  font-weight: 600;
+}
+.coverage-region { margin-top: 4px; }
+.coverage-region-label {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--ink-3);
+  margin: 6px 22px 0;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.coverage-region-list { list-style: none; padding: 0; margin: 0; }
+.coverage-item.clickable { cursor: pointer; }
+.coverage-item:not(.clickable) { cursor: default; }
+.coverage-item:not(.clickable):hover { background: transparent; color: inherit; }
+.coverage-item:not(.clickable):hover .coverage-item-name { color: var(--ink); }
+.coverage-footer {
+  padding: 14px 22px;
+  font-size: 11px;
+  color: var(--ink-2);
+  border-top: 1px solid var(--rule-soft);
+  font-style: italic;
+}
+.coverage-footer a { color: var(--amber); text-decoration: none; font-weight: 500; }
+.coverage-footer a:hover { text-decoration: underline; }
+
+/* COMPARE MODAL */
+.compare-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(6px);
+  z-index: 9998;
+  align-items: center; justify-content: center;
+}
+.compare-modal.open { display: flex; }
+.compare-modal-card {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  min-width: 460px; max-width: 90vw;
+  font-family: var(--sans);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+/* Coverage shares the compare-modal-card shell but needs scroll. Specified
+   after .compare-modal-card so its overflow-y wins over the shell's
+   overflow: hidden without needing !important. */
+.compare-modal-card.coverage-modal-card {
+  min-width: 360px; max-width: 480px; max-height: 80vh; overflow-y: auto;
+}
+.compare-modal-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper);
+}
+.compare-close {
+  background: none; border: 1px solid var(--rule);
+  color: var(--ink-2);
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  font-size: 16px; cursor: pointer; line-height: 1;
+  transition: color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.compare-close:hover { color: var(--hazard); border-color: var(--hazard); transform: rotate(90deg); }
+.compare-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.compare-table th, .compare-table td {
+  padding: 10px 16px; text-align: left;
+  border-bottom: 1px solid var(--rule-soft);
+  font-family: var(--mono);
+}
+.compare-table th {
+  color: var(--ink);
+  font-family: var(--serif);
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.compare-table td.row-label {
+  color: var(--ink-2);
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Accessibility: visible focus indicator on every interactive element */
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+.layer:focus-visible, .toggle:focus-visible {
+  outline-offset: 4px;
+}
+
+/* Honour the OS-level reduced-motion preference. The flyout slide, the
+   chevron rotation, the gear toggle, and the basemap-button transitions
+   all animate by default — this collapses them to ~instant for users who
+   have asked the OS to minimise motion. Use !important so per-component
+   transition overrides further up the file can't reintroduce the motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* SHEET HANDLE — drag affordance for the mobile bottom sheet; hidden on
+   desktop where the sidebar is a fixed column. */
+.sheet-handle { display: none; }
+
+/* MOBILE — map-first bottom sheet (2026-07-01 redesign; replaces the stacked
+   40vh sidebar that truncated mid-panel). The <aside> becomes a fixed sheet
+   overlaying the map with three snap states driven by data-sheet, dragged
+   via #sheet-handle (js/sheet.js). Because it OVERLAYS .map-wrap, Leaflet
+   never resizes — no invalidateSize() plumbing needed. Breakpoint widened to
+   820px (matches the landing; 768px left iPad-portrait with a squeezed
+   desktop grid). */
+@media (max-width: 820px) {
+  :root { --sheet-peek: 104px; }
+
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px 1fr;
+    height: 100vh;
+    height: 100dvh;
+  }
+  .map-wrap { grid-row: 2; grid-column: 1; }
+  .header-meta { display: none; }
+
+  aside {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 85dvh;
+    z-index: 1200;
+    border-right: none;
+    border-top: 1px solid var(--rule);
+    border-radius: 14px 14px 0 0;
+    box-shadow: var(--shadow-lg);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    overscroll-behavior: contain;
+    transform: translateY(calc(100% - var(--sheet-peek)));
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  aside[data-sheet="half"] { transform: translateY(48%); }
+  aside[data-sheet="full"] { transform: translateY(0); }
+  aside[data-sheet="peek"] { overflow-y: hidden; }
+
+  .sheet-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 28px;
+    background: transparent;
+    border: none;
+    cursor: grab;
+    touch-action: none;   /* pointer events own the drag; no scroll fight */
+  }
+  .sheet-handle::before {
+    content: '';
+    width: 44px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--ink-3);
+  }
+
+  /* Fly-out goes full-screen ABOVE the sheet. */
+  .flyout {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: calc(100dvh - 56px);
+    z-index: 1300;
+    border-left: none;
+  }
+  .flyout-body { padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px)); }
+  .flyout-close { width: 44px; height: 44px; font-size: 20px; }
+
+  /* Map furniture clears the peek bar. */
+  .soil-legend {
+    bottom: calc(var(--sheet-peek) + 10px + env(safe-area-inset-bottom, 0px));
+    left: 10px;
+    max-width: calc(100vw - 20px);
+  }
+  .leaflet-bottom .leaflet-control {
+    margin-bottom: calc(var(--sheet-peek) + 6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Touch ergonomics: 16px inputs stop iOS focus-zoom; 44px targets. */
+  .search, .sp-input, .sp-textarea, .boundary-zoom-input { font-size: 16px; }
+  .layer { padding: 14px 0; }
+  .toggle { width: 44px; height: 26px; border-radius: 13px; }
+  .toggle::after { width: 22px; height: 22px; }
+  .layer.active .toggle::after { transform: translateX(18px); }
+  .info-icon { width: 28px; height: 28px; font-size: 13px; }
+  .leaflet-control-zoom a {
+    width: 42px !important;
+    height: 42px !important;
+    line-height: 42px !important;
+    font-size: 18px !important;
+  }
+
+  /* Tooltips can't hang off-screen at 375px. */
+  .info-icon::after {
+    left: auto;
+    right: -8px;
+    transform: none;
+    max-width: min(240px, calc(100vw - 48px));
+  }
+
+  /* Modals fit the viewport. */
+  .compare-modal-card,
+  .compare-modal-card.coverage-modal-card {
+    min-width: 0;
+    width: calc(100vw - 24px);
+    max-width: none;
+    max-height: 85dvh;
+  }
+  .compare-modal-card { overflow-x: auto; }
+  .compare-modal-card.coverage-modal-card { overflow-y: auto; }
+}

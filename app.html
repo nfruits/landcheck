@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<!-- CSP (2026-07-01 security sweep): script-src 'self' neutralises injected
+     inline script / event-handler payloads (defense-in-depth for the escaped
+     map-data popups). connect-src/img-src stay https: because the app fetches
+     tiles + data from many government hosts. frame-ancestors can't be set via
+     meta — set it as an HTTP header at the host if clickjacking hardening is
+     wanted. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+<title>LandCheck — Raw Land Analysis</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="stylesheet" href="vendor/leaflet/leaflet.min.css" />
+<link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css" />
+<link rel="stylesheet" href="vendor/fonts/fonts.css" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="brand-mark">LandCheck</div>
+      <div class="brand-tag">raw land analysis · v0.1</div>
+    </div>
+    <div class="header-meta">
+      <span><i class="dot"></i> US datasets · FEMA · USFWS · USGS · USDA</span>
+    </div>
+  </header>
+
+  <aside data-sheet="peek">
+    <button class="sheet-handle" id="sheet-handle" type="button" aria-label="Expand panel"></button>
+    <!-- LOCATE (collapsed by default) -->
+    <div class="panel locate-panel" id="locate-panel">
+      <button class="locate-toggle" id="search-toggle" type="button" aria-label="Open search">
+        <span class="locate-icon" aria-hidden="true">⌕</span>
+        <span class="locate-hint">Search</span>
+      </button>
+      <div class="search-wrap" id="search-wrap">
+        <input id="search" class="search" placeholder="address, city, ZIP, or lat,lon" autocomplete="off"
+               title="Search by street address, city or place name, ZIP code, or paste lat,lon coordinates." />
+        <div id="search-results" class="search-results"></div>
+        <div class="search-help" id="search-help" title="Search by street address, city or place name, ZIP code, or paste lat,lon coordinates.">?</div>
+      </div>
+    </div>
+
+    <!-- NOW VIEWING (absorbs the bottom coord bar; shows pinned-count pill) -->
+    <div class="panel now-viewing">
+      <div class="panel-title"><span>Now viewing</span><span class="num">01</span></div>
+      <div class="nv-grid">
+        <div class="nv-cell nv-coords">
+          <span class="nv-label">Lat</span>
+          <strong id="lat-display">—</strong>
+        </div>
+        <div class="nv-cell nv-coords">
+          <span class="nv-label">Lon</span>
+          <strong id="lon-display">—</strong>
+        </div>
+        <div class="nv-cell nv-zoom">
+          <span class="nv-label">Zoom</span>
+          <strong id="zoom-display">—</strong>
+        </div>
+        <div class="nv-cell nv-scale">
+          <span class="nv-label">Scale</span>
+          <strong id="scale-display">—</strong>
+        </div>
+      </div>
+      <button class="pin-pill" id="compare-parcels" disabled>
+        <span class="pin-pill-star">★</span>
+        <span><span id="pin-count">0</span>/3 pinned</span>
+      </button>
+      <div class="pin-list" id="pin-list"></div>
+    </div>
+
+    <!-- DATA LAYERS (parcels first per request) -->
+    <div class="panel">
+      <div class="panel-title">
+        <span>Data Layers</span>
+        <button type="button" class="info-icon" data-tip="Toggle map overlays sourced from public US government datasets. Some layers only render above a minimum zoom — a toast will tell you when." aria-label="About data layers"></button>
+        <span class="num">02</span>
+      </div>
+      <div class="layer" data-layer="parcels">
+        <div class="layer-label"><span class="layer-swatch" style="background:rgba(212,164,74,0.15);border-color:var(--amber);"></span>Parcels (zoom 14+)</div>
+        <button type="button" class="info-icon" data-tip="Property boundaries from official state &amp; county GIS portals — statewide where a state publishes one, otherwise the largest metro counties, plus 30 Virginia localities. Owner &amp; value show where the source exposes them. Click Coverage for the full list." aria-label="About parcels layer"></button>
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+      <div class="coverage-row">
+        <button type="button" class="coverage-btn" id="coverage-btn">Coverage…</button>
+      </div>
+      <div class="layer" data-layer="flood">
+        <div class="layer-label"><span class="layer-swatch flood"></span>FEMA Flood Zones</div>
+        <button type="button" class="info-icon" data-tip="FEMA National Flood Hazard Layer. Shows special flood hazard areas (1% annual chance, ‘100-year flood’) and 0.2% annual chance areas. Used for insurance and building decisions." aria-label="About FEMA flood zones"></button>
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+      <div class="layer" data-layer="wetlands">
+        <div class="layer-label"><span class="layer-swatch wet"></span>NWI Wetlands</div>
+        <button type="button" class="info-icon" data-tip="USFWS National Wetlands Inventory. Mapped wetland boundaries used for environmental review. Renders at zoom 11+." aria-label="About NWI wetlands"></button>
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+      <div class="layer" data-layer="contours">
+        <div class="layer-label"><span class="layer-swatch topo"></span>USGS Contours</div>
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+      <div class="layer" data-layer="soil">
+        <div class="layer-label"><span class="layer-swatch soil"></span>USDA Soil (SSURGO)</div>
+        <button type="button" class="info-icon" data-tip="USDA NRCS Soil Survey Geographic Database. Polygon-level soil units with drainage, hydric rating, and farmland classification. Click a polygon for details." aria-label="About SSURGO soil"></button>
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+      <div class="layer" data-layer="protected-lands">
+        <div class="layer-label"><span class="layer-swatch" style="background:rgba(74,107,53,0.25);border-color:var(--terrain);"></span>Protected Lands (PAD-US)</div>
+        <button type="button" class="info-icon" data-tip="USGS Protected Areas Database — federal/state/local parks, forests, BLM lands, wilderness areas, conservation easements. Renders at zoom 10+. Click a polygon for manager + designation." aria-label="About PAD-US protected lands"></button>
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+    </div>
+
+    <!-- ADMIN BOUNDARIES -->
+    <div class="panel" id="admin-panel">
+      <div class="panel-title">
+        <span>Admin Boundaries</span>
+        <button type="button" class="info-icon" data-tip="Each boundary tier has a minimum zoom level so the map stays readable. Click the gear to override the defaults — useful if you want, say, county lines visible from zoom 5 instead of 6." aria-label="About zoom thresholds"></button>
+        <button type="button" class="boundary-gear" id="boundary-gear" title="Edit zoom thresholds" aria-label="Edit zoom thresholds">⚙</button>
+        <span class="num">03</span>
+      </div>
+      <div class="layer admin-toggle" data-layer="admin-states">
+        <div class="layer-label"><span class="layer-swatch" style="background:#d63333;border-color:#d63333;"></span>States</div>
+        <input type="number" class="boundary-zoom-input" data-zoom-for="states" min="0" max="20" step="1" aria-label="States min zoom" />
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+      <div class="layer admin-toggle" data-layer="admin-counties">
+        <div class="layer-label"><span class="layer-swatch" style="background:#e8782a;border-color:#e8782a;"></span>Counties</div>
+        <input type="number" class="boundary-zoom-input" data-zoom-for="counties" min="0" max="20" step="1" aria-label="Counties min zoom" />
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+      <div class="layer admin-toggle" data-layer="admin-places">
+        <div class="layer-label"><span class="layer-swatch" style="background:#7b3fbb;border-color:#7b3fbb;"></span>Cities / Places</div>
+        <input type="number" class="boundary-zoom-input" data-zoom-for="places" min="0" max="20" step="1" aria-label="Places min zoom" />
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+      <div class="layer admin-toggle" data-layer="admin-streets">
+        <div class="layer-label"><span class="layer-swatch" style="background:#9a9a9a;border-color:#9a9a9a;"></span>Streets &amp; Roads</div>
+        <input type="number" class="boundary-zoom-input" data-zoom-for="streets" min="0" max="20" step="1" aria-label="Streets min zoom" />
+        <button type="button" class="toggle" role="switch" aria-checked="false"></button>
+      </div>
+    </div>
+
+    <!-- MY PLACES -->
+    <div class="panel" id="my-places-panel">
+      <div class="panel-title">
+        <span>My Places</span>
+        <button type="button" class="info-icon" data-tip="Save locations and parcels for later. Click an entry to revisit; tick boxes to compare two or three side-by-side." aria-label="About saved places"></button>
+        <span class="num">04</span>
+      </div>
+      <div class="my-places-empty" id="my-places-empty">No saved places yet. Click the map or a parcel and use “Save this place”.</div>
+      <div class="my-places-list" id="my-places-list"></div>
+      <button class="tool-btn" id="compare-selected" disabled hidden>Compare Selected</button>
+    </div>
+
+    <!-- BASEMAP -->
+    <div class="panel">
+      <div class="panel-title"><span>Basemap</span><span class="num">05</span></div>
+      <div class="basemap-grid">
+        <button class="basemap-btn active" data-basemap="satellite">Satellite</button>
+        <button class="basemap-btn" data-basemap="topo">USGS Topo</button>
+        <button class="basemap-btn" data-basemap="street">Street</button>
+        <button class="basemap-btn" data-basemap="terrain">Terrain</button>
+      </div>
+    </div>
+
+    <!-- MEASURE -->
+    <div class="panel">
+      <div class="panel-title"><span>Measure</span><span class="num">06</span></div>
+      <button class="tool-btn" id="draw-polygon"><span class="tool-btn-glyph">◇</span> Draw Parcel</button>
+      <button class="tool-btn" id="draw-line"><span class="tool-btn-glyph">∕</span> Measure Distance</button>
+      <button class="tool-btn danger" id="clear-draw"><span class="tool-btn-glyph">×</span> Clear All</button>
+      <div class="readout-row"><span class="readout-label">Drawn Area</span><span class="readout-value empty" id="r-area">— ac</span></div>
+      <div class="readout-row"><span class="readout-label">Drawn Perimeter</span><span class="readout-value empty" id="r-perim">— ft</span></div>
+      <div class="readout-row"><span class="readout-label">Terrain change</span><span class="readout-value empty" id="r-terrain-change">—</span></div>
+      <div class="readout-row"><span class="readout-label">Last Distance</span><span class="readout-value empty" id="r-dist">— ft</span></div>
+    </div>
+
+    <div class="compare-modal" id="compare-modal">
+      <div class="compare-modal-card">
+        <div class="compare-modal-head">
+          <span>Pinned Parcels</span>
+          <button class="compare-close" type="button">×</button>
+        </div>
+        <table class="compare-table"></table>
+      </div>
+    </div>
+
+    <div class="compare-modal" id="about-modal">
+      <div class="compare-modal-card about-modal-card">
+        <div class="compare-modal-head">
+          <span>About LandCheck</span>
+          <button class="compare-close" id="about-close" type="button">×</button>
+        </div>
+        <div class="about-body">
+          <p>A free, open-source tool for evaluating raw land before purchase.
+          Pulls public US data from FEMA, USFWS, USGS, USDA, and the US Census,
+          plus parcel records from official state &amp; county GIS portals —
+          statewide where a state publishes one, otherwise the largest metro
+          counties, plus Virginia via 30 localities. See the Coverage button for
+          the full list.</p>
+          <p>No account and no analytics — your saved places and settings stay
+          in your browser. Map clicks and searches are sent directly to the
+          public data providers (OpenStreetMap, US Census, USGS, FEMA, USDA, and
+          county GIS servers) to fetch results, and those services may log the
+          request.</p>
+          <p class="about-disclaimer">This is a research aid, not due diligence:
+          boundaries are county GIS renderings, not surveys. Verify with a
+          licensed surveyor and a title company before any purchase decision.</p>
+          <p class="about-support">Built for landowners, by a landowner.<br>
+          <a href="https://github.com/nfruits/landcheck" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <span class="footer-sep">·</span>
+          <a href="https://buymeacoffee.com/biobash" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
+          <span class="footer-sep">·</span>
+          <a href="mailto:nfruits@tutanota.com">nfruits@tutanota.com</a></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-modal coverage-modal" id="coverage-modal">
+      <div class="compare-modal-card coverage-modal-card">
+        <div class="compare-modal-head">
+          <span>Parcel Coverage</span>
+          <button class="coverage-close" type="button">×</button>
+        </div>
+        <ul class="coverage-list" id="coverage-list"></ul>
+        <div class="coverage-footer">
+          <p>Coverage is expanded county-by-county. To request a specific locality, <a href="https://github.com/nfruits/landcheck/issues" target="_blank" rel="noopener noreferrer">open an issue on GitHub</a>.</p>
+          <p>Don't see your county? <a href="mailto:nfruits@tutanota.com">Drop me a line.</a></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Click anywhere on the map for elevation lookup. Draw a polygon to measure parcel acreage. Layer data from public US government services — verify against authoritative sources before purchase decisions.<br><br>
+      <a href="#" id="about-link">About / Open Source</a>
+      <span class="footer-sep">·</span>
+      <a href="#" id="reset-view">Reset view</a>
+    </div>
+  </aside>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-status" id="parcel-status" hidden><span class="loading"></span><span>Loading parcels…</span></div>
+    <div class="compass">N</div>
+
+    <!-- SOIL LEGEND (shown only when Soil layer is active) -->
+    <div class="soil-legend" id="soil-legend" hidden>
+      <div class="soil-legend-title">Soil quality</div>
+      <div class="soil-legend-row"><span class="sw" style="background:#3a8a3a"></span>Well-drained, non-hydric, prime/farmable</div>
+      <div class="soil-legend-row"><span class="sw" style="background:#c89a2a"></span>Mixed signals</div>
+      <div class="soil-legend-row"><span class="sw" style="background:#b04525"></span>Poorly drained, hydric, non-prime</div>
+      <div class="soil-legend-note">
+        Red ≠ bad. It means wetland-leaning soil — great for wildlife habitat
+        and certain crops, less suitable for building or row-crop farming.
+        Click any soil polygon for raw SSURGO values.
+      </div>
+    </div>
+
+    <!-- DETAIL FLY-OUT (slides in from the right on map click) -->
+    <aside class="flyout" id="flyout" aria-hidden="true">
+      <header class="flyout-head">
+        <div class="flyout-titlebar">
+          <span class="flyout-title" id="flyout-title">— click the map</span>
+          <span class="flyout-subtitle" id="flyout-nearest"></span>
+        </div>
+        <button class="flyout-close" id="flyout-close" type="button" aria-label="Close detail panel">×</button>
+      </header>
+      <div class="flyout-body">
+        <section class="flyout-section">
+          <h3>Parcel</h3>
+          <div class="kv-row"><span>Property ID</span><span class="readout-value empty" id="p-id">—</span></div>
+          <div class="kv-row"><span>Owner</span><span class="readout-value empty" id="p-owner">—</span></div>
+          <div class="kv-row"><span>Acreage</span><span class="readout-value empty" id="p-acres">—</span></div>
+          <div class="kv-row"><span>Assessed Value</span><span class="readout-value empty" id="p-value">—</span></div>
+          <div class="kv-row"><span>County</span><span class="readout-value empty" id="p-county">—</span></div>
+          <div class="kv-row" id="p-zoning-row" hidden><span>Zoning</span><span><a id="p-zoning" target="_blank" rel="noopener noreferrer">View on county site →</a></span></div>
+        </section>
+
+        <section class="flyout-section">
+          <h3>Hazards</h3>
+          <div class="kv-row"><span>Flood Zone</span><span class="readout-value empty" id="r-flood">—</span></div>
+          <div class="kv-row flyout-note"><span></span><span id="r-flood-desc" class="muted"></span></div>
+        </section>
+
+        <section class="flyout-section">
+          <h3>Terrain</h3>
+          <div class="kv-row"><span>Elevation</span><span class="readout-value empty" id="r-elev">— ft</span></div>
+          <!-- FUTURE: slope analysis via polygon-vertex elevation sampling (ties in with draw tool) -->
+        </section>
+
+        <section class="flyout-section">
+          <h3>Soil</h3>
+          <div class="kv-row"><span>Map Unit</span><span class="readout-value empty" id="s-name">—</span></div>
+          <div class="kv-row"><span>Drainage</span><span class="readout-value empty" id="s-drain">—</span></div>
+          <div class="kv-row"><span>Hydric</span><span class="readout-value empty" id="s-hydric">—</span></div>
+          <div class="kv-row"><span>Farmland</span><span class="readout-value empty" id="s-farm">—</span></div>
+          <div class="kv-row"><span>Parent Material</span><span class="readout-value empty" id="s-parent">—</span></div>
+          <span id="s-slope" hidden></span>
+        </section>
+
+        <section class="flyout-section flyout-section-collapsible">
+          <button class="flyout-section-toggle" id="demographics-toggle" type="button" aria-expanded="false" aria-controls="demographics-body">
+            <h3>Demographics</h3>
+            <span class="flyout-section-chevron" aria-hidden="true">▸</span>
+          </button>
+          <div class="flyout-section-body" id="demographics-body" hidden>
+            <div class="kv-row"><span>Population</span><span class="readout-value empty" id="d-population">—</span></div>
+            <div class="kv-row"><span>Median income</span><span class="readout-value empty" id="d-income">—</span></div>
+            <div class="kv-row"><span>Median age</span><span class="readout-value empty" id="d-age">—</span></div>
+            <div class="kv-row"><span>Bachelor's+</span><span class="readout-value empty" id="d-education">—</span></div>
+            <div class="kv-row"><span>Employed</span><span class="readout-value empty" id="d-employment">—</span></div>
+            <div class="kv-row"><span>Owner-occupied</span><span class="readout-value empty" id="d-housing">—</span></div>
+            <div class="kv-row flyout-note"><span></span><span id="demographics-note" class="muted empty"></span></div>
+          </div>
+        </section>
+
+        <section class="flyout-actions">
+          <button class="tool-btn" id="save-place">★ Save this place</button>
+          <div class="save-place-form" id="save-place-form" hidden>
+            <label class="sp-field-label" for="sp-label">Label</label>
+            <input type="text" id="sp-label" class="sp-input" placeholder="Optional label, e.g. Aunt Mary's lot" autocomplete="off" />
+            <label class="sp-field-label" for="sp-notes">Notes</label>
+            <textarea id="sp-notes" class="sp-textarea" rows="3" placeholder="Notes about this property"></textarea>
+            <div class="sp-form-actions">
+              <button class="tool-btn" id="sp-save">Save</button>
+              <button class="tool-btn" id="sp-cancel">Cancel</button>
+            </div>
+          </div>
+          <button class="tool-btn" id="export-pdf"><span class="tool-btn-glyph">⇣</span> Export PDF</button>
+        </section>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="vendor/leaflet/leaflet.min.js"></script>
+<script src="vendor/leaflet-draw/leaflet.draw.js"></script>
+<script src="vendor/jspdf/jspdf.umd.min.js"></script>
+<script src="vendor/leaflet-image/leaflet-image.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
